@@ -1,0 +1,65 @@
+@using ParkingSystem.Client.Services
+@using ParkingSystem.Shared.DTOs
+@inject DragState DragState
+@inject ParkingApiClient ApiClient
+
+<div class="floor-container">
+    @foreach (var floor in Floors)
+    {
+        <div class="card floor-card">
+            <h4 class="text-gold">Floor @floor.FloorNumber <small>(@floor.OccupiedCount / @floor.Capacity)</small></h4>
+            <div class="floor-grid">
+                @foreach (var spot in floor.ParkingSpots)
+                {
+                    <div class="parking-spot @(spot.IsOccupied ? "occupied" : "free")"
+                         ondragover="event.preventDefault();"
+                         @ondrop="() => OnDrop(spot)">
+                        
+                        <span class="spot-number">@spot.SpotNumber</span>
+                        
+                        @if (spot.IsOccupied && spot.Vehicle != null)
+                        {
+                            <div draggable="true" @ondragstart="() => OnDragStart(spot.Vehicle)" style="cursor: grab; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                                <div class="vehicle-icon">
+                                    @(spot.Vehicle.Type == "Car" ? "🚗" : spot.Vehicle.Type == "Truck" ? "🚛" : "🏍️")
+                                </div>
+                                <small class="text-gold">@spot.Vehicle.LicensePlate</small>
+                                <button class="btn-danger" @onclick="() => Unpark(spot.Id)" @onclick:stopPropagation="true">Exit</button>
+                            </div>
+                        }
+                        else
+                        {
+                            <span style="color: #475569;">Free</span>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public List<FloorDto> Floors { get; set; } = new();
+    [Parameter] public EventCallback OnChange { get; set; }
+
+    private async Task OnDrop(ParkingSpotDto spot)
+    {
+        if (DragState.DraggedVehicle == null) return;
+        if (spot.IsOccupied) return;
+
+        await ApiClient.ParkVehicleAsync(DragState.DraggedVehicle.Id, spot.Id);
+        DragState.DraggedVehicle = null;
+        await OnChange.InvokeAsync();
+    }
+
+    private async Task Unpark(Guid spotId)
+    {
+        await ApiClient.UnparkVehicleAsync(spotId);
+        await OnChange.InvokeAsync();
+    }
+
+    private void OnDragStart(VehicleDto vehicle)
+    {
+        DragState.DraggedVehicle = vehicle;
+    }
+}

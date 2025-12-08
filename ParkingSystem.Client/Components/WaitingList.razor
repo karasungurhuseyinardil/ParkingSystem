@@ -1,0 +1,45 @@
+@using ParkingSystem.Client.Services
+@using ParkingSystem.Shared.DTOs
+@inject DragState DragState
+@inject ParkingApiClient ApiClient
+
+<div class="card section-waiting-list">
+    <h3 class="text-gold">Waiting Vehicles</h3>
+    <div class="vehicle-list">
+        @foreach (var vehicle in Vehicles)
+        {
+            <div class="vehicle-card" draggable="true" @ondragstart="() => OnDragStart(vehicle)">
+                <div>
+                    <strong class="text-gold">@vehicle.LicensePlate</strong>
+                    <br/>
+                    <small>@vehicle.Type</small>
+                </div>
+                <div class="vehicle-icon">
+                    @(vehicle.Type == "Car" ? "🚗" : vehicle.Type == "Truck" ? "🚛" : "🏍️")
+                </div>
+                <button class="btn-danger" @onclick="() => DeleteVehicle(vehicle.Id)" style="margin-left: 0.5rem;">X</button>
+            </div>
+        }
+        @if (!Vehicles.Any())
+        {
+            <p class="text-white">No waiting vehicles.</p>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<VehicleDto> Vehicles { get; set; } = new();
+    [Parameter] public EventCallback OnChange { get; set; }
+
+
+    private void OnDragStart(VehicleDto vehicle)
+    {
+        DragState.DraggedVehicle = vehicle;
+    }
+
+    private async Task DeleteVehicle(Guid vehicleId)
+    {
+        await ApiClient.DeleteVehicleAsync(vehicleId);
+        await OnChange.InvokeAsync();
+    }
+}

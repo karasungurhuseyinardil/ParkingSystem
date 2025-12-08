@@ -1,0 +1,82 @@
+﻿@page "/"
+@using ParkingSystem.Client.Components
+@using ParkingSystem.Client.Services
+@using ParkingSystem.Shared.DTOs
+@inject ParkingApiClient ApiClient
+@implements IDisposable
+
+<PageTitle>Parking System</PageTitle>
+
+<div class="app-container">
+    <div class="sidebar">
+        <h2>🅿️ Parking OS</h2>
+        
+        <div class="card section-new-vehicle">
+            <h4 class="text-gold">New Vehicle</h4>
+            <div style="display: flex; gap: 0.5rem; flex-direction: column;">
+                <input @bind="newLicensePlate" placeholder="License Plate" style="padding: 0.5rem; border-radius: 0.25rem; border: 1px solid #334155; background: #1e293b; color: white;" />
+                <select @bind="newType" style="padding: 0.5rem; border-radius: 0.25rem; border: 1px solid #334155; background: #1e293b; color: white;">
+                    <option value="Car">Car</option>
+                    <option value="Truck">Truck</option>
+                    <option value="Motorcycle">Motorcycle</option>
+                </select>
+                <button class="btn-primary" @onclick="CreateVehicle">Add Vehicle</button>
+            </div>
+        </div>
+
+        <WaitingList Vehicles="waitingVehicles" OnChange="RefreshData" />
+    </div>
+
+    <div class="main-content">
+        <FloorView Floors="floors" OnChange="RefreshData" />
+    </div>
+</div>
+
+@code {
+    private List<FloorDto> floors = new();
+    private List<VehicleDto> waitingVehicles = new();
+    private string newLicensePlate = "";
+    private string newType = "Car";
+    private System.Threading.Timer? timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshData();
+        // Poll every 2 seconds for updates
+        timer = new System.Threading.Timer(async _ => 
+        {
+            await InvokeAsync(async () => 
+            {
+                await RefreshData();
+                StateHasChanged();
+            });
+        }, null, 2000, 2000);
+    }
+
+    private async Task RefreshData()
+    {
+        try
+        {
+            floors = await ApiClient.GetFloorsAsync();
+            waitingVehicles = await ApiClient.GetWaitingVehiclesAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error refreshing data: {ex.Message}");
+        }
+    }
+
+    private async Task CreateVehicle()
+    {
+        if (string.IsNullOrWhiteSpace(newLicensePlate)) return;
+
+        await ApiClient.CreateVehicleAsync(new CreateVehicleDto { LicensePlate = newLicensePlate, Type = newType });
+        newLicensePlate = "";
+        await RefreshData();
+    }
+
+    public void Dispose()
+    {
+        timer?.Dispose();
+    }
+}
