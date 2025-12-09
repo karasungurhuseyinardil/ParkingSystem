@@ -20,7 +20,7 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Publish .NET WASM Project
-        run: dotnet publish ParkingSystem.Client/ParkingSystem.Client.csproj -c Release -o release/wwwroot
+        run: dotnet publish ParkingSystem.Client/ParkingSystem.Client.csproj -c Release -o release
 
       - name: Change base-tag in index.html from / to /ParkingSystem/
         run: sed -i 's/<base href="\/" \/>/<base href="\/ParkingSystem\/" \/>/g' release/wwwroot/index.html
